@@ -1,0 +1,34 @@
+defmodule EctoTaggedUnion.MixProject do
+  use Mix.Project
+
+  def project do
+    [
+      app: :ecto_tagged_union,
+      version: "0.1.0",
+      elixir: "~> 1.6",
+      start_permanent: Mix.env() == :prod,
+      deps: deps(),
+      package: package(),
+      description: "Tagged union for ecto schemas"
+    ]
+  end
+
+  def application do
+    [
+      extra_applications: [:logger]
+    ]
+  end
+
+  defp deps do
+    [
+      {:ecto, "~> 3.5.5"}
+    ]
+  end
+
+  defp package do
+    [
+      licenses: ["Apache-2.0"],
+      links: %{"Github" => "https://github.com/ppraisethesun/tagged_union"}
+    ]
+  end
+end
