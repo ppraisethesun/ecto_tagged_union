@@ -9,7 +9,8 @@ defmodule EctoTaggedUnion.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       package: package(),
-      description: "Tagged union for ecto schemas"
+      description: "Tagged union for ecto schemas",
+      docs: docs()
     ]
   end
 
@@ -21,7 +22,8 @@ defmodule EctoTaggedUnion.MixProject do
 
   defp deps do
     [
-      {:ecto, "~> 3.5.5"}
+      {:ecto, "~> 3.5.5"},
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
     ]
   end
 
@@ -29,6 +31,14 @@ defmodule EctoTaggedUnion.MixProject do
     [
       licenses: ["Apache-2.0"],
       links: %{"Github" => "https://github.com/ppraisethesun/tagged_union"}
+    ]
+  end
+
+  defp docs do
+    [
+      extras: [
+        "README.md": [title: "README"]
+      ]
     ]
   end
 end
