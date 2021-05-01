@@ -22,7 +22,7 @@ defmodule EctoTaggedUnion.MixProject do
 
   defp deps do
     [
-      {:ecto, "~> 3.5.5"},
+      {:ecto, "~> 3.5"},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
     ]
   end
