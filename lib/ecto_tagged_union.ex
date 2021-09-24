@@ -35,6 +35,8 @@ defmodule EctoTaggedUnion do
           |> changeset(data)
           |> Ecto.Changeset.apply_action(:insert)
         end
+
+        defoverridable cast: 1
       end
     end
   end
