@@ -1,13 +1,8 @@
 defmodule EctoTaggedUnion.Utils do
   #########################################
-  # expands module names in type definition
+  # Takes the leaf module name and uses it as a discriminator
   def parse_type_definition(variants, caller) do
-    variants
-    |> parse_variants(caller)
-    |> Enum.map(fn variant ->
-      disc = variant |> Module.split() |> Enum.at(-1)
-      {disc, variant}
-    end)
+    parse_variants(variants, caller)
   end
 
   defp parse_variants(variants, caller, acc \\ [])
@@ -17,8 +12,19 @@ defmodule EctoTaggedUnion.Utils do
     parse_variants(variants, caller, acc)
   end
 
-  defp parse_variants([{:__aliases__, _, _} = head | tail], caller, acc) do
-    parse_variants(tail, caller, [parse_alias(head, caller) | acc])
+  defp parse_variants([head | tail], caller, acc) do
+    parse_variants(tail, caller, [parse_variant(head, caller) | acc])
+  end
+
+  defp parse_variant({disc, {:__aliases__, _, _} = variant_alias}, caller) do
+    variant_module = parse_alias(variant_alias, caller)
+    {"#{disc}", variant_module}
+  end
+
+  defp parse_variant({:__aliases__, _, _} = variant_alias, caller) do
+    variant_module = parse_alias(variant_alias, caller)
+    disc = variant_module |> Module.split() |> Enum.at(-1)
+    {disc, variant_module}
   end
 
   defp parse_alias({:__aliases__, _, _} = type, caller) do
@@ -35,102 +41,51 @@ defmodule EctoTaggedUnion.Utils do
     end
   end
 
-  def build_casts(tag_location, variants, opts) do
-    casts = defcasts(tag_location, variants, opts)
+  def build_casts(variants, opts) do
+    tag_name = Keyword.fetch!(opts, :tag)
 
-    for {name, variant_mod} <- variants, tag_name <- [:type, "type"] do
-      defcast(tag_name, name, variant_mod)
-    end
+    casts =
+      for {name, variant_mod} <- variants, tag_name <- [tag_name, Atom.to_string(tag_name)] do
+        defcast(name, variant_mod, tag_name)
+      end
 
     fallback =
-      quote do
-        def cast(nil), do: nil
+      quote bind_quoted: [tag_name: tag_name, variants: variants] do
+        def cast(nil), do: {:ok, nil}
 
-        def cast(other) do
-          :error
+        def cast(map) do
+          {:error,
+           {:invalid_tag,
+            expected: Enum.map(unquote(variants), &elem(&1, 0)),
+            got: map[unquote(tag_name)] || map["#{unquote(tag_name)}"]}}
         end
       end
 
     [impl(), casts, fallback]
   end
 
-  defp defcasts(:internal, variants, opts) do
-    tag_name = Keyword.fetch!(opts, :tag)
-
-    for {name, variant_mod} <- variants, tag_name <- [tag_name, Atom.to_string(tag_name)] do
-      quote location: :keep,
-            bind_quoted: [tag_name: tag_name, name: name, variant_mod: variant_mod] do
-        def cast(%{unquote(tag_name) => unquote(name)} = data) do
-          variant_mod = unquote(variant_mod)
-
-          case variant_mod.changeset(struct(variant_mod), data) do
-            %Changeset{valid?: true} = changeset -> Changeset.apply_action!(changeset, :insert)
-            changeset -> {:error, changeset.errors}
-          end
-        end
-      end
-    end
-  end
-
-  defp defcasts(:external, variants, _opts) do
-    for {name, variant_mod} <- variants do
-      quote location: :keep,
-            bind_quoted: [name: name, variant_mod: variant_mod] do
-        def cast(%{unquote(name) => %{} = data}) do
-          variant_mod = unquote(variant_mod)
-
-          case variant_mod.changeset(struct(variant_mod), data) do
-            %Changeset{valid?: true} = changeset -> Changeset.apply_action!(changeset, :insert)
-            changeset -> {:error, changeset.errors}
-          end
-        end
-      end
-    end
-  end
-
-  defp defcasts(:adjacent, variants, opts) do
-    tag_name = Keyword.fetch!(opts, :tag)
-    content_name = Keyword.fetch!(opts, :content)
-
-    for {name, variant_mod} <- variants,
-        tag_name <- [tag_name, Atom.to_string(tag_name)],
-        content_name <- [content_name, Atom.to_string(content_name)],
-        is_atom(tag_name) === is_atom(content_name) do
-      quote location: :keep,
-            bind_quoted: [
-              tag_name: tag_name,
-              content_name: content_name,
-              name: name,
-              variant_mod: variant_mod
-            ] do
-        def cast(%{unquote(tag_name) => unquote(name), unquote(content_name) => data}) do
-          variant_mod = unquote(variant_mod)
-
-          case variant_mod.changeset(struct(variant_mod), data) do
-            %Changeset{valid?: true} = changeset -> Changeset.apply_action!(changeset, :insert)
-            changeset -> {:error, changeset.errors}
-          end
-        end
-      end
-    end
-  end
-
-  defp defcast(tag_name, name, variant_mod) do
+  defp defcast(name, variant_mod, tag_name) do
     quote location: :keep,
           bind_quoted: [tag_name: tag_name, name: name, variant_mod: variant_mod] do
       def cast(%{unquote(tag_name) => unquote(name)} = data) do
         variant_mod = unquote(variant_mod)
 
-        case variant_mod.changeset(struct(variant_mod), data) do
-          %Changeset{valid?: true} = changeset -> Changeset.apply_action!(changeset, :insert)
-          changeset -> {:error, changeset.errors}
-        end
+        # TODO: use variant modules cast functions instead of changeset
+        variant_mod
+        |> struct()
+        |> variant_mod.changeset(data)
+        |> Changeset.apply_action(:insert)
       end
     end
   end
 
-  def build_loads(tag_location, variants, opts) do
-    loads = defloads(tag_location, variants, opts)
+  def build_loads(variants, opts) do
+    tag_name = opts |> Keyword.fetch!(:tag) |> Atom.to_string()
+
+    loads =
+      for {name, variant_mod} <- variants do
+        build_load(name, variant_mod, tag_name)
+      end
 
     fallback =
       quote do
@@ -144,54 +99,23 @@ defmodule EctoTaggedUnion.Utils do
     [impl(), loads, fallback]
   end
 
-  def defloads(:internal, variants, opts) do
-    tag_name = opts |> Keyword.fetch!(:tag) |> Atom.to_string()
-
-    for {name, variant_mod} <- variants do
-      quote location: :keep,
-            bind_quoted: [tag_name: tag_name, name: name, variant_mod: variant_mod] do
-        def load(%{unquote(tag_name) => unquote(name)} = data) do
-          variant_mod = unquote(variant_mod)
-          Ecto.embedded_load(variant_mod, data, :json)
-        end
+  defp build_load(name, variant_mod, tag_name) do
+    quote location: :keep,
+          bind_quoted: [tag_name: tag_name, name: name, variant_mod: variant_mod] do
+      def load(%{unquote(tag_name) => unquote(name)} = data) do
+        variant_mod = unquote(variant_mod)
+        Ecto.embedded_load(variant_mod, data, :json)
       end
     end
   end
 
-  def defloads(:external, variants, _opts) do
-    for {name, variant_mod} <- variants do
-      quote location: :keep,
-            bind_quoted: [name: name, variant_mod: variant_mod] do
-        def load(%{unquote(name) => %{} = data}) do
-          variant_mod = unquote(variant_mod)
-          Ecto.embedded_load(variant_mod, data, :json)
-        end
+  def build_dumps(variants, opts) do
+    tag_name = Keyword.fetch!(opts, :tag)
+
+    dumps =
+      for {name, variant_mod} <- variants do
+        build_dump(name, variant_mod, tag_name)
       end
-    end
-  end
-
-  def defloads(:adjacent, variants, opts) do
-    tag_name = opts |> Keyword.fetch!(:tag) |> Atom.to_string()
-    content_name = opts |> Keyword.fetch!(:content) |> Atom.to_string()
-
-    for {name, variant_mod} <- variants do
-      quote location: :keep,
-            bind_quoted: [
-              tag_name: tag_name,
-              content_name: content_name,
-              name: name,
-              variant_mod: variant_mod
-            ] do
-        def load(%{unquote(tag_name) => unquote(name), unquote(content_name) => %{} = data}) do
-          variant_mod = unquote(variant_mod)
-          Ecto.embedded_load(variant_mod, data, :json)
-        end
-      end
-    end
-  end
-
-  def build_dumps(tag_location, variants, opts) do
-    dumps = defdumps(tag_location, variants, opts)
 
     fallback =
       quote do
@@ -202,61 +126,28 @@ defmodule EctoTaggedUnion.Utils do
     [impl(), dumps, fallback]
   end
 
-  def defdumps(:internal, variants, opts) do
-    tag_name = Keyword.fetch!(opts, :tag)
+  defp build_dump(name, variant_mod, tag_name) do
+    quote location: :keep,
+          bind_quoted: [tag_name: tag_name, name: name, variant_mod: variant_mod] do
+      def dump(%unquote(variant_mod){} = data) do
+        tag_name = unquote(tag_name)
+        name = unquote(name)
 
-    for {name, variant_mod} <- variants do
-      quote location: :keep,
-            bind_quoted: [tag_name: tag_name, name: name, variant_mod: variant_mod] do
-        def dump(%unquote(variant_mod){} = data) do
-          tag_name = unquote(tag_name)
-          name = unquote(name)
-
-          data
-          |> Ecto.embedded_dump(:json)
-          |> Map.put(tag_name, name)
-        end
+        data
+        |> Ecto.embedded_dump(:json)
+        |> Map.put(tag_name, name)
       end
     end
   end
 
-  def defdumps(:external, variants, opts) do
+  def build_utility_funcs(variants, opts) do
     tag_name = Keyword.fetch!(opts, :tag)
 
-    for {name, variant_mod} <- variants do
+    for {name, variant_mod} <- variants, tag_name <- [tag_name, Atom.to_string(tag_name)] do
       quote location: :keep,
             bind_quoted: [tag_name: tag_name, name: name, variant_mod: variant_mod] do
-        def dump(%unquote(variant_mod){} = data) do
-          tag_name = unquote(tag_name)
-          name = unquote(name)
-
-          %{name => Ecto.embedded_dump(data, :json)}
-        end
-      end
-    end
-  end
-
-  def defdumps(:adjacent, variants, opts) do
-    tag_name = Keyword.fetch!(opts, :tag)
-    content_name = Keyword.fetch!(opts, :content)
-
-    for {name, variant_mod} <- variants do
-      quote location: :keep,
-            bind_quoted: [
-              tag_name: tag_name,
-              content_name: content_name,
-              name: name,
-              variant_mod: variant_mod
-            ] do
-        def dump(%unquote(variant_mod){} = data) do
-          tag_name = unquote(tag_name)
-          content_name = unquote(content_name)
-          name = unquote(name)
-
-          %{
-            tag_name => name,
-            content_name => Ecto.embedded_dump(data, :json)
-          }
+        def variant(%{unquote(tag_name) => unquote(name)} = data) do
+          unquote(variant_mod)
         end
       end
     end
