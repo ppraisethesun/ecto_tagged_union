@@ -91,9 +91,11 @@ defmodule EctoTaggedUnion.Utils do
 
         def cast(map) do
           {:error,
-           {:invalid_tag,
-            expected: Enum.map(unquote(variants), &elem(&1, 0)),
-            got: map[unquote(tag_name)] || map["#{unquote(tag_name)}"]}}
+           [
+             {:invalid_tag,
+              expected: Enum.map(unquote(variants), &elem(&1, 0)),
+              got: map[unquote(tag_name)] || map["#{unquote(tag_name)}"]}
+           ]}
         end
       end
 

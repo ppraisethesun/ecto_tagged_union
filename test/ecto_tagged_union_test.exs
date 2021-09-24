@@ -48,8 +48,8 @@ defmodule EctoTaggedUnionTest do
     end
 
     test "cast error" do
-      assert {:error, {:invalid_tag, _}} = Union.cast(%{tag: "Third"})
-      assert {:error, {:invalid_tag, _}} = Union.cast(%{"tag" => "Third"})
+      assert {:error, [{:invalid_tag, _}]} = Union.cast(%{tag: "Third"})
+      assert {:error, [{:invalid_tag, _}]} = Union.cast(%{"tag" => "Third"})
 
       assert {:error,
               %Ecto.Changeset{
@@ -116,7 +116,12 @@ defmodule EctoTaggedUnionTest do
       use Ecto.Schema
 
       embedded_schema do
-        field(:union, Shape)
+        field(:shape, {:array, Shape})
+      end
+
+      def changeset(struct \\ %__MODULE__{}, attrs) do
+        struct
+        |> Ecto.Changeset.cast(attrs, [:shape])
       end
     end
 
@@ -127,8 +132,8 @@ defmodule EctoTaggedUnionTest do
     end
 
     test "cast error" do
-      assert {:error, {:invalid_tag, _}} = Shape.cast(%{tag: "triangle"})
-      assert {:error, {:invalid_tag, _}} = Shape.cast(%{"tag" => "triangle"})
+      assert {:error, [{:invalid_tag, _}]} = Shape.cast(%{tag: "triangle"})
+      assert {:error, [{:invalid_tag, _}]} = Shape.cast(%{"tag" => "triangle"})
 
       assert {:error,
               %Ecto.Changeset{
