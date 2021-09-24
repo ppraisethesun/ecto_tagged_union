@@ -1,16 +1,11 @@
 # EctoTaggedUnion
 
-**TODO: Add description**
-
 ## Installation
-
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `ecto_tagged_union` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:ecto_tagged_union, "~> 0.1.0"}
+    {:ecto_tagged_union, git: "https://github.com/ppraisethesun/ecto_tagged_union"}
   ]
 end
 ```
@@ -18,56 +13,46 @@ end
 ## Usage
 
 First, define variant schemas:
+use `EctoTaggedUnion.Variant` or define your own cast/1 function
 
 ```elixir
-defmodule Shape.Circle do
-  use Ecto.Schema
+defmodule Square do
+  use EctoTaggedUnion.Variant
   import Ecto.Changeset
 
-  @primary_key false
   embedded_schema do
-    field :radius, :integer
+    field(:side, :integer)
   end
 
-  @fields [:radius]
   def changeset(data, attrs) do
-    data
-    |> cast(attrs, @fields)
+    cast(data, attrs, [:side])
   end
 end
 
-defmodule Shape.Rectangle do
-  use Ecto.Schema
+defmodule Circle do
+  use EctoTaggedUnion.Variant
   import Ecto.Changeset
 
-  @primary_key false
   embedded_schema do
-    field :height, :integer
-    field :width, :integer
+    field(:radius, :integer)
   end
 
-  @fields [:height, :width]
   def changeset(data, attrs) do
-    data
-    |> cast(attrs, @fields)
+    cast(data, attrs, [:radius])
   end
 end
 ```
 
-### Internally tagged
-
-By default, tag is stored next to other fields of the variant.
+Tag is stored next to other fields of the variant.
 
 ```elixir
 defmodule Shape do
   import EctoTaggedUnion
-  alias Shape.Circle
-  alias Shape.Rectangle
 
-  defunion Circle | Rectangle
+  defunion Square | Circle
 end
 
-iex> Shape.dump(%Shape.Circle{radius: 10})
+iex> Shape.dump(%Circle{radius: 10})
 %{radius: 10, tag: "Circle"}
 
 iex> Shape.load(%{"radius" => 10, "tag" => "Circle"})
@@ -77,46 +62,20 @@ iex> Shape.cast(%{radius: 10, tag: "Circle"})
 %Shape.Circle{radius: 10}
 ```
 
-### Externally tagged
+You can define custom tags with keyword lists:
 
 ```elixir
 defmodule Shape do
   import EctoTaggedUnion
-  alias Shape.Circle
-  alias Shape.Rectangle
-
-  defunion Circle | Rectangle, :external
+  defunion(square: Square, circle: Circle)
 end
 
-iex> Shape.dump(%Shape.Circle{radius: 10})
-%{"Circle" => %{radius: 10}}
+iex> Shape.dump(%Circle{radius: 10})
+%{radius: 10, tag: "circle"}
 
-iex> Shape.load(%{"Circle" => %{"radius" => 10}})
+iex> Shape.load(%{"radius" => 10, "tag" => "circle"})
 %Shape.Circle{radius: 10}
 
-iex> Shape.cast(%{"Circle" => %{radius: 10}})
-%Shape.Circle{radius: 10}
-```
-
-### Adjacently tagged
-
-The tag and the content are adjacent to each other as two fields within the same map.
-
-```elixir
-defmodule Shape do
-  import EctoTaggedUnion
-  alias Shape.Circle
-  alias Shape.Rectangle
-
-  defunion Circle | Rectangle, :adjacent, tag: :t, content: :c
-end
-
-iex> Shape.dump(%Shape.Circle{radius: 10})
-%{c: %{radius: 10}, t: "Circle"}
-
-iex> Shape.load(%{"c" => %{"radius" => 10}, "t" => "Circle"})
-%Shape.Circle{radius: 10}
-
-iex> Shape.cast(%{t: "Circle", c: %{radius: 10}})
+iex> Shape.cast(%{radius: 10, tag: "circle"})
 %Shape.Circle{radius: 10}
 ```

@@ -6,7 +6,6 @@ defmodule EctoTaggedUnionTest do
       use EctoTaggedUnion.Variant
       import Ecto.Changeset
 
-      @primary_key false
       embedded_schema do
         field(:first, :string)
       end
@@ -20,7 +19,6 @@ defmodule EctoTaggedUnionTest do
       use EctoTaggedUnion.Variant
       import Ecto.Changeset
 
-      @primary_key false
       embedded_schema do
         field(:second, :integer)
       end

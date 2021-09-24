@@ -27,6 +27,8 @@ defmodule EctoTaggedUnion do
       quote do
         use Ecto.Schema
 
+        @primary_key false
+
         def cast(data) do
           __MODULE__
           |> struct()
