@@ -30,7 +30,9 @@ defmodule EctoTaggedUnion.Utils do
   end
 
   defp parse_alias({:__aliases__, _, _} = type, caller) do
-    Macro.expand(type, caller)
+    type
+    |> Macro.expand(caller)
+    |> Code.ensure_compiled!()
   end
 
   defp validate_variants(variants) do
