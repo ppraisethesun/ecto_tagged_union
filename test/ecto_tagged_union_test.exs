@@ -3,7 +3,7 @@ defmodule EctoTaggedUnionTest do
 
   describe "module name as discrimitator" do
     defmodule First do
-      use Ecto.Schema
+      use EctoTaggedUnion.Variant
       import Ecto.Changeset
 
       @primary_key false
@@ -17,7 +17,7 @@ defmodule EctoTaggedUnionTest do
     end
 
     defmodule Second do
-      use Ecto.Schema
+      use EctoTaggedUnion.Variant
       import Ecto.Changeset
 
       @primary_key false
@@ -84,7 +84,7 @@ defmodule EctoTaggedUnionTest do
 
   describe "custom discriminator" do
     defmodule Square do
-      use Ecto.Schema
+      use EctoTaggedUnion.Variant
       import Ecto.Changeset
 
       embedded_schema do
@@ -97,7 +97,7 @@ defmodule EctoTaggedUnionTest do
     end
 
     defmodule Circle do
-      use Ecto.Schema
+      use EctoTaggedUnion.Variant
       import Ecto.Changeset
 
       embedded_schema do

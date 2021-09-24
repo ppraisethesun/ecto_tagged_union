@@ -18,6 +18,22 @@ defmodule EctoTaggedUnion do
     loads = Utils.build_loads(variants, opts)
     dumps = Utils.build_dumps(variants, opts)
     utility = Utils.build_utility_funcs(variants, opts)
-    [head, casts, loads, dumps, utility]
+    underscore = Utils.build_underscore_funcs(variants, opts)
+    [head, casts, loads, dumps, utility, underscore]
+  end
+
+  defmodule Variant do
+    defmacro __using__(_opts) do
+      quote do
+        use Ecto.Schema
+
+        def cast(data) do
+          __MODULE__
+          |> struct()
+          |> changeset(data)
+          |> Ecto.Changeset.apply_action(:insert)
+        end
+      end
+    end
   end
 end

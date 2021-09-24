@@ -2,7 +2,9 @@ defmodule EctoTaggedUnion.Utils do
   #########################################
   # Takes the leaf module name and uses it as a discriminator
   def parse_type_definition(variants, caller) do
-    parse_variants(variants, caller)
+    variants
+    |> parse_variants(caller)
+    |> validate_variants()
   end
 
   defp parse_variants(variants, caller, acc \\ [])
@@ -31,9 +33,43 @@ defmodule EctoTaggedUnion.Utils do
     Macro.expand(type, caller)
   end
 
-  #########################################
+  defp validate_variants(variants) do
+    variants
+    |> validate_unique_discs()
+    |> validate_no_nesting()
+  end
 
-  alias Ecto.Changeset
+  defp validate_unique_discs(variants) do
+    discs = Enum.map(variants, fn {disc, _mod} -> disc end)
+    unique_discs = Enum.dedup(discs)
+
+    if length(unique_discs) == length(variants) do
+      variants
+    else
+      raise ArgumentError, "Duplicate discriminators: #{inspect(discs -- unique_discs)}"
+    end
+  end
+
+  defp validate_no_nesting(variants) do
+    variants
+    |> Enum.each(fn {disc, variant_mod} ->
+      :functions
+      |> variant_mod.__info__()
+      |> Enum.member?({:__tagged_union__, 1})
+      |> case do
+        true ->
+          raise ArgumentError,
+                "{#{disc}, #{inspect(variant_mod)}} is a union. Nested unions are not supported"
+
+        false ->
+          :ok
+      end
+    end)
+
+    variants
+  end
+
+  #########################################
 
   defp impl do
     quote do
@@ -70,11 +106,7 @@ defmodule EctoTaggedUnion.Utils do
       def cast(%{unquote(tag_name) => unquote(name)} = data) do
         variant_mod = unquote(variant_mod)
 
-        # TODO: use variant modules cast functions instead of changeset
-        variant_mod
-        |> struct()
-        |> variant_mod.changeset(data)
-        |> Changeset.apply_action(:insert)
+        variant_mod.cast(data)
       end
     end
   end
@@ -150,6 +182,12 @@ defmodule EctoTaggedUnion.Utils do
           unquote(variant_mod)
         end
       end
+    end
+  end
+
+  def build_underscore_funcs(variants, opts) do
+    quote location: :keep, bind_quoted: [variants: variants, opts: opts] do
+      def __tagged_union__(:variants), do: unquote(variants)
     end
   end
 end
