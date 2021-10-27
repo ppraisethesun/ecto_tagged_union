@@ -60,9 +60,9 @@ defmodule EctoTaggedUnionTest do
     end
 
     test "load success" do
-      assert %First{} = Union.load(%{"tag" => "First"})
-      assert %First{} = Union.load(%{"tag" => "First", "first" => "asdsa"})
-      assert %Second{} = Union.load(%{"tag" => "Second", "second" => 123})
+      assert {:ok, %First{}} = Union.load(%{"tag" => "First"})
+      assert {:ok, %First{}} = Union.load(%{"tag" => "First", "first" => "asdsa"})
+      assert {:ok, %Second{}} = Union.load(%{"tag" => "Second", "second" => 123})
     end
 
     test "load error" do
@@ -144,9 +144,9 @@ defmodule EctoTaggedUnionTest do
     end
 
     test "load success" do
-      assert %Square{} = Shape.load(%{"tag" => "square"})
-      assert %Square{} = Shape.load(%{"tag" => "square", "side" => 1})
-      assert %Circle{} = Shape.load(%{"tag" => "circle", "radius" => 123})
+      assert {:ok, %Square{}} = Shape.load(%{"tag" => "square"})
+      assert {:ok, %Square{}} = Shape.load(%{"tag" => "square", "side" => 1})
+      assert {:ok, %Circle{}} = Shape.load(%{"tag" => "circle", "radius" => 123})
     end
 
     test "load error" do

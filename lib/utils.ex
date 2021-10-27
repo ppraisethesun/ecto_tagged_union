@@ -125,7 +125,7 @@ defmodule EctoTaggedUnion.Utils do
 
     fallback =
       quote do
-        def load(nil), do: nil
+        def load(nil), do: {:ok, nil}
 
         def load(other) do
           :error
@@ -140,7 +140,7 @@ defmodule EctoTaggedUnion.Utils do
           bind_quoted: [tag_name: tag_name, name: name, variant_mod: variant_mod] do
       def load(%{unquote(tag_name) => unquote(name)} = data) do
         variant_mod = unquote(variant_mod)
-        Ecto.embedded_load(variant_mod, data, :json)
+        {:ok, Ecto.embedded_load(variant_mod, data, :json)}
       end
     end
   end
