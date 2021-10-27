@@ -71,8 +71,8 @@ defmodule EctoTaggedUnionTest do
     end
 
     test "dump" do
-      assert nil == Union.dump(nil)
-      assert %{tag: "First", first: "asdsad"} = Union.dump(%First{first: "asdsad"})
+      assert {:ok, nil} == Union.dump(nil)
+      assert {:ok, %{tag: "First", first: "asdsad"}} = Union.dump(%First{first: "asdsad"})
     end
 
     test "variant" do
@@ -116,7 +116,7 @@ defmodule EctoTaggedUnionTest do
       use Ecto.Schema
 
       embedded_schema do
-        field(:shape, {:array, Shape})
+        field(:shape, Shape)
       end
 
       def changeset(struct \\ %__MODULE__{}, attrs) do
@@ -155,12 +155,26 @@ defmodule EctoTaggedUnionTest do
     end
 
     test "dump" do
-      assert nil == Shape.dump(nil)
-      assert %{tag: "square", side: 1} = Shape.dump(%Square{side: 1})
+      assert {:ok, nil} == Shape.dump(nil)
+      assert {:ok, %{tag: "square", side: 1}} = Shape.dump(%Square{side: 1})
     end
 
     test "variant" do
       assert Square = Shape.variant(%{"tag" => "square"})
+    end
+
+    test "dumps variant if Ecto.embedded_dump is called with union inside embed" do
+      data = %TestSchema2{
+        shape: nil
+      }
+
+      assert %{shape: nil} = Ecto.embedded_dump(data, :json)
+
+      data = %TestSchema2{
+        shape: %Square{side: 1}
+      }
+
+      assert %{shape: %{tag: "square", side: 1}} = Ecto.embedded_dump(data, :json)
     end
   end
 end

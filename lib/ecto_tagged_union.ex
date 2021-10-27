@@ -12,6 +12,11 @@ defmodule EctoTaggedUnion do
 
         @impl true
         def type, do: :map
+
+        @impl true
+        def embed_as(_) do
+          :dump
+        end
       end
 
     casts = Utils.build_casts(variants, opts)

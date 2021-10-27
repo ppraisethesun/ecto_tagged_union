@@ -155,7 +155,7 @@ defmodule EctoTaggedUnion.Utils do
 
     fallback =
       quote do
-        def dump(nil), do: nil
+        def dump(nil), do: {:ok, nil}
         def dump(_), do: :error
       end
 
@@ -169,9 +169,10 @@ defmodule EctoTaggedUnion.Utils do
         tag_name = unquote(tag_name)
         name = unquote(name)
 
-        data
-        |> Ecto.embedded_dump(:json)
-        |> Map.put(tag_name, name)
+        {:ok,
+         data
+         |> Ecto.embedded_dump(:json)
+         |> Map.put(tag_name, name)}
       end
     end
   end
