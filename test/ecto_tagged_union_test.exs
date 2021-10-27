@@ -45,6 +45,9 @@ defmodule EctoTaggedUnionTest do
       assert {:ok, nil} == Union.cast(nil)
       assert {:ok, %First{}} = Union.cast(%{tag: "First", first: "asdsa"})
       assert {:ok, %Second{}} = Union.cast(%{tag: "Second", second: 123})
+
+      assert {:ok, %First{}} = Union.cast(%First{first: "asdsa"})
+      assert {:ok, %Second{}} = Union.cast(%Second{second: 123})
     end
 
     test "cast error" do

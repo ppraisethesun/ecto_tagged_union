@@ -107,6 +107,8 @@ defmodule EctoTaggedUnion.Utils do
   defp defcast(name, variant_mod, tag_name) do
     quote location: :keep,
           bind_quoted: [tag_name: tag_name, name: name, variant_mod: variant_mod] do
+      def cast(%unquote(variant_mod){} = struct), do: {:ok, struct}
+
       def cast(%{unquote(tag_name) => unquote(name)} = data) do
         variant_mod = unquote(variant_mod)
 
