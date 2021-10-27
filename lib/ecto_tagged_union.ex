@@ -31,6 +31,7 @@ defmodule EctoTaggedUnion do
     defmacro __using__(_opts) do
       quote do
         use Ecto.Schema
+        @behaviour EctoTaggedUnion.Variant
 
         @primary_key false
 
@@ -44,5 +45,7 @@ defmodule EctoTaggedUnion do
         defoverridable cast: 1
       end
     end
+
+    @callback changeset(struct, map) :: Ecto.Changeset.t()
   end
 end
