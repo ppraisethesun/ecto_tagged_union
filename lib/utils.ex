@@ -182,14 +182,24 @@ defmodule EctoTaggedUnion.Utils do
   def build_utility_funcs(variants, opts) do
     tag_name = Keyword.fetch!(opts, :tag)
 
-    for {name, variant_mod} <- variants, tag_name <- [tag_name, Atom.to_string(tag_name)] do
-      quote location: :keep,
-            bind_quoted: [tag_name: tag_name, name: name, variant_mod: variant_mod] do
-        def variant(%{unquote(tag_name) => unquote(name)} = data) do
-          unquote(variant_mod)
+    variant =
+      for {name, variant_mod} <- variants, tag_name <- [tag_name, Atom.to_string(tag_name)] do
+        quote location: :keep,
+              bind_quoted: [tag_name: tag_name, name: name, variant_mod: variant_mod] do
+          def variant(%{unquote(tag_name) => unquote(name)} = data) do
+            unquote(variant_mod)
+          end
         end
       end
-    end
+
+    name =
+      for {name, variant_mod} <- variants do
+        quote location: :keep do
+          def name(%unquote(variant_mod){}), do: unquote(name)
+        end
+      end
+
+    [variant, name]
   end
 
   def build_underscore_funcs(variants, opts) do

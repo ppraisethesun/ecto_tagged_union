@@ -81,6 +81,10 @@ defmodule EctoTaggedUnionTest do
     test "variant" do
       assert First = Union.variant(%{"tag" => "First"})
     end
+
+    test "name" do
+      assert "First" = Union.name(%First{})
+    end
   end
 
   describe "custom discriminator" do
@@ -164,6 +168,10 @@ defmodule EctoTaggedUnionTest do
 
     test "variant" do
       assert Square = Shape.variant(%{"tag" => "square"})
+    end
+
+    test "name" do
+      assert "square" = Shape.name(%Square{side: 1})
     end
 
     test "dumps variant if Ecto.embedded_dump is called with union inside embed" do
