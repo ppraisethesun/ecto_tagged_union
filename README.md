@@ -53,13 +53,13 @@ defmodule Shape do
 end
 
 iex> Shape.dump(%Circle{radius: 10})
-%{radius: 10, tag: "Circle"}
+{:ok, %{radius: 10, tag: "Circle"}]
 
 iex> Shape.load(%{"radius" => 10, "tag" => "Circle"})
-%Shape.Circle{radius: 10}
+{:ok, %Shape.Circle{radius: 10}}
 
 iex> Shape.cast(%{radius: 10, tag: "Circle"})
-%Shape.Circle{radius: 10}
+{:ok, %Shape.Circle{radius: 10}}
 ```
 
 You can define custom tags with keyword lists:
@@ -71,11 +71,11 @@ defmodule Shape do
 end
 
 iex> Shape.dump(%Circle{radius: 10})
-%{radius: 10, tag: "circle"}
+{:ok, %{radius: 10, tag: "circle"}}
 
 iex> Shape.load(%{"radius" => 10, "tag" => "circle"})
-%Shape.Circle{radius: 10}
+{:ok, %Shape.Circle{radius: 10}}
 
 iex> Shape.cast(%{radius: 10, tag: "circle"})
-%Shape.Circle{radius: 10}
+{:ok, %Shape.Circle{radius: 10}}
 ```
