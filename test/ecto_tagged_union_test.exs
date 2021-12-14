@@ -50,6 +50,11 @@ defmodule EctoTaggedUnionTest do
       assert {:ok, %Second{}} = Union.cast(%Second{second: 123})
     end
 
+    test "cast with atom tag" do
+      assert {:ok, %First{}} = Union.cast(%{tag: :First, first: "asdsa"})
+      assert {:ok, %Second{}} = Union.cast(%{tag: :Second, second: 123})
+    end
+
     test "cast error" do
       assert {:error, [{:invalid_tag, _}]} = Union.cast(%{tag: "Third"})
       assert {:error, [{:invalid_tag, _}]} = Union.cast(%{"tag" => "Third"})
@@ -82,8 +87,8 @@ defmodule EctoTaggedUnionTest do
       assert First = Union.variant(%{"tag" => "First"})
     end
 
-    test "name" do
-      assert "First" = Union.name(%First{})
+    test "disc" do
+      assert "First" = Union.disc(%First{})
     end
   end
 
@@ -170,8 +175,8 @@ defmodule EctoTaggedUnionTest do
       assert Square = Shape.variant(%{"tag" => "square"})
     end
 
-    test "name" do
-      assert "square" = Shape.name(%Square{side: 1})
+    test "disc" do
+      assert "square" = Shape.disc(%Square{side: 1})
     end
 
     test "dumps variant if Ecto.embedded_dump is called with union inside embed" do

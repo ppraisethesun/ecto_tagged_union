@@ -83,8 +83,8 @@ defmodule EctoTaggedUnion.Utils do
     tag_name = Keyword.fetch!(opts, :tag)
 
     casts =
-      for {name, variant_mod} <- variants, tag_name <- [tag_name, Atom.to_string(tag_name)] do
-        defcast(name, variant_mod, tag_name)
+      for {disc, variant_mod} <- variants, tag_name <- [tag_name, Atom.to_string(tag_name)] do
+        defcast(disc, variant_mod, tag_name)
       end
 
     fallback =
@@ -104,12 +104,13 @@ defmodule EctoTaggedUnion.Utils do
     [impl(), casts, fallback]
   end
 
-  defp defcast(name, variant_mod, tag_name) do
+  defp defcast(disc, variant_mod, tag_name) do
     quote location: :keep,
-          bind_quoted: [tag_name: tag_name, name: name, variant_mod: variant_mod] do
+          bind_quoted: [tag_name: tag_name, disc: disc, variant_mod: variant_mod] do
       def cast(%unquote(variant_mod){} = struct), do: {:ok, struct}
 
-      def cast(%{unquote(tag_name) => unquote(name)} = data) do
+      def cast(%{unquote(tag_name) => n} = data)
+          when n in [unquote(disc), unquote(String.to_existing_atom(disc))] do
         variant_mod = unquote(variant_mod)
 
         variant_mod.cast(data)
@@ -121,8 +122,8 @@ defmodule EctoTaggedUnion.Utils do
     tag_name = opts |> Keyword.fetch!(:tag) |> Atom.to_string()
 
     loads =
-      for {name, variant_mod} <- variants do
-        build_load(name, variant_mod, tag_name)
+      for {disc, variant_mod} <- variants do
+        build_load(disc, variant_mod, tag_name)
       end
 
     fallback =
@@ -137,10 +138,10 @@ defmodule EctoTaggedUnion.Utils do
     [impl(), loads, fallback]
   end
 
-  defp build_load(name, variant_mod, tag_name) do
+  defp build_load(disc, variant_mod, tag_name) do
     quote location: :keep,
-          bind_quoted: [tag_name: tag_name, name: name, variant_mod: variant_mod] do
-      def load(%{unquote(tag_name) => unquote(name)} = data) do
+          bind_quoted: [tag_name: tag_name, disc: disc, variant_mod: variant_mod] do
+      def load(%{unquote(tag_name) => unquote(disc)} = data) do
         variant_mod = unquote(variant_mod)
         {:ok, Ecto.embedded_load(variant_mod, data, :json)}
       end
@@ -151,8 +152,8 @@ defmodule EctoTaggedUnion.Utils do
     tag_name = Keyword.fetch!(opts, :tag)
 
     dumps =
-      for {name, variant_mod} <- variants do
-        build_dump(name, variant_mod, tag_name)
+      for {disc, variant_mod} <- variants do
+        build_dump(disc, variant_mod, tag_name)
       end
 
     fallback =
@@ -164,17 +165,17 @@ defmodule EctoTaggedUnion.Utils do
     [impl(), dumps, fallback]
   end
 
-  defp build_dump(name, variant_mod, tag_name) do
+  defp build_dump(disc, variant_mod, tag_name) do
     quote location: :keep,
-          bind_quoted: [tag_name: tag_name, name: name, variant_mod: variant_mod] do
+          bind_quoted: [tag_name: tag_name, disc: disc, variant_mod: variant_mod] do
       def dump(%unquote(variant_mod){} = data) do
         tag_name = unquote(tag_name)
-        name = unquote(name)
+        disc = unquote(disc)
 
         {:ok,
          data
          |> Ecto.embedded_dump(:json)
-         |> Map.put(tag_name, name)}
+         |> Map.put(tag_name, disc)}
       end
     end
   end
@@ -183,23 +184,23 @@ defmodule EctoTaggedUnion.Utils do
     tag_name = Keyword.fetch!(opts, :tag)
 
     variant =
-      for {name, variant_mod} <- variants, tag_name <- [tag_name, Atom.to_string(tag_name)] do
+      for {disc, variant_mod} <- variants, tag_name <- [tag_name, Atom.to_string(tag_name)] do
         quote location: :keep,
-              bind_quoted: [tag_name: tag_name, name: name, variant_mod: variant_mod] do
-          def variant(%{unquote(tag_name) => unquote(name)} = data) do
+              bind_quoted: [tag_name: tag_name, disc: disc, variant_mod: variant_mod] do
+          def variant(%{unquote(tag_name) => unquote(disc)} = data) do
             unquote(variant_mod)
           end
         end
       end
 
-    name =
-      for {name, variant_mod} <- variants do
+    disc =
+      for {disc, variant_mod} <- variants do
         quote location: :keep do
-          def name(%unquote(variant_mod){}), do: unquote(name)
+          def disc(%unquote(variant_mod){}), do: unquote(disc)
         end
       end
 
-    [variant, name]
+    [variant, disc]
   end
 
   def build_underscore_funcs(variants, opts) do
